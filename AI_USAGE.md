@@ -30,7 +30,7 @@ From the implementation stage:
 
 ## How the solution was validated
 
-- Automated tests: 34 Vitest + supertest tests (API, processing, domain), with response validation against the spec turned on. `pnpm typecheck` passes under `strict`.
+- Automated tests: 36 Vitest + supertest tests (API, processing, domain, contract), with response validation against the spec turned on. `pnpm typecheck` passes under `strict`.
 - Manual runs: `curl` against the dev server and the compiled build, covering 202 + `Location`, `queued → sent`, validation errors, malformed JSON, 415, non-UUID and unknown ids, 405 and `/health`. A `SIGTERM` during a slow send confirmed that shutdown drains the queue before exiting.
 - Clean install: `rm -rf node_modules && pnpm install --frozen-lockfile`, then the tests again.
 - `pnpm audit`: no known vulnerabilities (2026-11-11).

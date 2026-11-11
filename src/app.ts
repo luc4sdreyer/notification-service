@@ -29,7 +29,8 @@ export function createApp({ service, validateResponses = false }: AppDeps): expr
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
   });
-  app.use(notificationRoutes(service));
+  // Major version of info.version in openapi.yaml; test/contract.test.ts keeps them in step.
+  app.use('/v0', notificationRoutes(service));
 
   app.use(errorHandler);
   return app;

@@ -14,14 +14,14 @@ function errorPaths(res: request.Response): string[] {
   return (res.body.errors ?? []).map((e: { path: string }) => e.path);
 }
 
-describe('POST /notifications', () => {
+describe('POST /v0/notifications', () => {
   it('accepts a valid notification with 202, a uuid, queued status and a Location header', async () => {
     const { app } = setup();
-    const res = await request(app).post('/notifications').send(validBody);
+    const res = await request(app).post('/v0/notifications').send(validBody);
 
     expect(res.status).toBe(202);
     expect(res.body).toEqual({ id: expect.stringMatching(UUID), status: 'queued' });
-    expect(res.headers.location).toBe(`/notifications/${res.body.id}`);
+    expect(res.headers.location).toBe(`/v0/notifications/${res.body.id}`);
   });
 
   it.each(['recipient', 'channel', 'message'])('rejects a body missing %s', async (field) => {
@@ -29,7 +29,7 @@ describe('POST /notifications', () => {
     const body: Record<string, string> = { ...validBody };
     delete body[field];
 
-    const res = await request(app).post('/notifications').send(body);
+    const res = await request(app).post('/v0/notifications').send(body);
 
     expectProblem(res, 400);
     expect(errorPaths(res)).toContain(`/body/${field}`);
@@ -37,7 +37,7 @@ describe('POST /notifications', () => {
 
   it('rejects an unsupported channel', async () => {
     const { app } = setup();
-    const res = await request(app).post('/notifications').send({ ...validBody, channel: 'fax' });
+    const res = await request(app).post('/v0/notifications').send({ ...validBody, channel: 'fax' });
 
     expectProblem(res, 400);
     expect(errorPaths(res)).toEqual(['/body/channel']);
@@ -48,7 +48,7 @@ describe('POST /notifications', () => {
     ['whitespace-only', '  \n\t '],
   ])('rejects an %s message', async (_label, message) => {
     const { app } = setup();
-    const res = await request(app).post('/notifications').send({ ...validBody, message });
+    const res = await request(app).post('/v0/notifications').send({ ...validBody, message });
 
     expectProblem(res, 400);
     expect(errorPaths(res)).toContain('/body/message');
@@ -56,7 +56,7 @@ describe('POST /notifications', () => {
 
   it('rejects unknown properties', async () => {
     const { app } = setup();
-    const res = await request(app).post('/notifications').send({ ...validBody, priority: 'high' });
+    const res = await request(app).post('/v0/notifications').send({ ...validBody, priority: 'high' });
 
     expectProblem(res, 400);
     expect(res.body.errors).toHaveLength(1);
@@ -64,7 +64,7 @@ describe('POST /notifications', () => {
 
   it('reports every problem in one response', async () => {
     const { app } = setup();
-    const res = await request(app).post('/notifications').send({ channel: 'fax', message: '' });
+    const res = await request(app).post('/v0/notifications').send({ channel: 'fax', message: '' });
 
     expectProblem(res, 400);
     expect(errorPaths(res)).toEqual(expect.arrayContaining(['/body/recipient', '/body/channel', '/body/message']));
@@ -78,7 +78,7 @@ describe('POST /notifications', () => {
     ['push', 'token with spaces'],
   ])('rejects an invalid %s recipient %j', async (channel, recipient) => {
     const { app } = setup();
-    const res = await request(app).post('/notifications').send({ ...validBody, channel, recipient });
+    const res = await request(app).post('/v0/notifications').send({ ...validBody, channel, recipient });
 
     expectProblem(res, 400);
     expect(res.body.detail).toBe('Request validation failed');
@@ -91,7 +91,7 @@ describe('POST /notifications', () => {
     ['push', 'fcm:APA91bH-abc_123'],
   ])('accepts a valid %s recipient %j', async (channel, recipient) => {
     const { app } = setup();
-    const res = await request(app).post('/notifications').send({ ...validBody, channel, recipient });
+    const res = await request(app).post('/v0/notifications').send({ ...validBody, channel, recipient });
 
     expect(res.status).toBe(202);
   });
@@ -99,7 +99,7 @@ describe('POST /notifications', () => {
   it('rejects malformed JSON with a problem response', async () => {
     const { app } = setup();
     const res = await request(app)
-      .post('/notifications')
+      .post('/v0/notifications')
       .set('Content-Type', 'application/json')
       .send('{"recipient": ');
 
@@ -109,18 +109,18 @@ describe('POST /notifications', () => {
 
   it('rejects a non-JSON content type with 415', async () => {
     const { app } = setup();
-    const res = await request(app).post('/notifications').set('Content-Type', 'text/plain').send('hello');
+    const res = await request(app).post('/v0/notifications').set('Content-Type', 'text/plain').send('hello');
 
     expectProblem(res, 415);
   });
 });
 
-describe('GET /notifications/{id}', () => {
+describe('GET /v0/notifications/{id}', () => {
   it('returns id, channel and status only', async () => {
     const { app } = setup();
-    const created = await request(app).post('/notifications').send(validBody);
+    const created = await request(app).post('/v0/notifications').send(validBody);
 
-    const res = await request(app).get(`/notifications/${created.body.id}`);
+    const res = await request(app).get(`/v0/notifications/${created.body.id}`);
 
     expect(res.status).toBe(200);
     expect(Object.keys(res.body).sort()).toEqual(['channel', 'id', 'status']);
@@ -129,14 +129,14 @@ describe('GET /notifications/{id}', () => {
 
   it('returns 404 for an unknown uuid', async () => {
     const { app } = setup();
-    const res = await request(app).get('/notifications/6f1c2a8e-3b4d-4c5e-8f9a-0b1c2d3e4f5a');
+    const res = await request(app).get('/v0/notifications/6f1c2a8e-3b4d-4c5e-8f9a-0b1c2d3e4f5a');
 
     expectProblem(res, 404);
   });
 
   it('returns 400 for an id that is not a uuid', async () => {
     const { app } = setup();
-    const res = await request(app).get('/notifications/123');
+    const res = await request(app).get('/v0/notifications/123');
 
     expectProblem(res, 400);
     expect(errorPaths(res)).toEqual(['/params/id']);

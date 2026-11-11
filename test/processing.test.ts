@@ -4,13 +4,13 @@ import type { ChannelSender } from '../src/ports/channelSender.js';
 import { alwaysFails, alwaysSucceeds, gatedSender, setup, validBody } from './helpers.js';
 
 async function create(app: Parameters<typeof request>[0], body: object = validBody): Promise<string> {
-  const res = await request(app).post('/notifications').send(body);
+  const res = await request(app).post('/v0/notifications').send(body);
   expect(res.status).toBe(202);
   return res.body.id;
 }
 
 async function statusOf(app: Parameters<typeof request>[0], id: string): Promise<string> {
-  const res = await request(app).get(`/notifications/${id}`);
+  const res = await request(app).get(`/v0/notifications/${id}`);
   return res.body.status;
 }
 

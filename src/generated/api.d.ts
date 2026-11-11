@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/notifications": {
+    "/v0/notifications": {
         parameters: {
             query?: never;
             header?: never;
@@ -21,7 +21,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/notifications/{id}": {
+    "/v0/notifications/{id}": {
         parameters: {
             query?: never;
             header?: never;

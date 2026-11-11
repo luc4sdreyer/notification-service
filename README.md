@@ -1,6 +1,6 @@
 # Notification Service
 
-A small HTTP service that accepts notifications (email, SMS, push), stores them in memory, and delivers them asynchronously through a simulated provider. Clients get a `202 Accepted` with an id straight away and poll `GET /notifications/{id}` to see whether the notification ended up `sent` or `failed`. The API is defined contract-first in [`openapi.yaml`](openapi.yaml). The service validates every request against it, and the TypeScript types are generated from it.
+A small HTTP service that accepts notifications (email, SMS, push), stores them in memory, and delivers them asynchronously through a simulated provider. Clients get a `202 Accepted` with an id straight away and poll `GET /v0/notifications/{id}` to see whether the notification ended up `sent` or `failed`. The API is defined contract-first in [`openapi.yaml`](openapi.yaml). The service validates every request against it, and the TypeScript types are generated from it.
 
 ## Running it
 
@@ -33,17 +33,17 @@ Configuration (environment variables):
 Example session:
 
 ```sh
-$ curl -i -X POST localhost:3000/notifications \
+$ curl -i -X POST localhost:3000/v0/notifications \
     -H 'Content-Type: application/json' \
     -d '{"recipient":"user@example.com","channel":"email","message":"Your order has shipped."}'
 HTTP/1.1 202 Accepted
-Location: /notifications/8a97468c-ca36-465a-88e7-8e584ad889eb
+Location: /v0/notifications/8a97468c-ca36-465a-88e7-8e584ad889eb
 {"id":"8a97468c-ca36-465a-88e7-8e584ad889eb","status":"queued"}
 
-$ curl localhost:3000/notifications/8a97468c-ca36-465a-88e7-8e584ad889eb
+$ curl localhost:3000/v0/notifications/8a97468c-ca36-465a-88e7-8e584ad889eb
 {"id":"8a97468c-ca36-465a-88e7-8e584ad889eb","channel":"email","status":"sent"}
 
-$ curl -X POST localhost:3000/notifications -H 'Content-Type: application/json' \
+$ curl -X POST localhost:3000/v0/notifications -H 'Content-Type: application/json' \
     -d '{"channel":"fax","message":""}'
 {"type":"about:blank","title":"Bad Request","status":400,"detail":"Request validation failed",
  "errors":[{"path":"/body/recipient","message":"must have required property 'recipient'"},
@@ -76,6 +76,7 @@ Where the assignment is silent:
 - `202 Accepted` for POST, with a `Location` header. Delivery happens after the response, so nothing has been "created" in the sense of done.
 - Field limits: `recipient` 1 to 320 characters (the practical maximum for an email address), `message` 1 to 1000 characters and at least one non-whitespace character. Unknown properties are rejected.
 - GET returns only `id`, `channel` and `status`, as specified. It deliberately doesn't echo `recipient` or `message` back, which keeps personal data out of responses.
+- The major version goes in the path: spec version 0.1.0 is served under `/v0`, and a breaking change would mean 1.0.0 under `/v1`. `/health` stays unversioned so probes don't change with the API. The versions are listed in the paths, not set with a `servers` base URL, because the validator ignores requests outside the base URL, and an unknown route would then get Express's HTML 404 instead of problem+json.
 - Ids are UUIDs (v4, `crypto.randomUUID()`), so a GET with a non-UUID id is a 400 and an unknown UUID is a 404.
 - Recipient formats: email must look like `name@domain.tld` with no whitespace. This is a pragmatic check, not full RFC 5322. SMS must be E.164 (`+14155550123`). A push token must be non-empty with no whitespace.
 
@@ -124,7 +125,7 @@ All errors look like this (`errors` is present only for validation failures):
 | Schema violation (missing field, bad channel, empty or whitespace message, extra property, oversized field) | 400, every violation listed |
 | Invalid recipient for the channel | 400, path `/body/recipient` |
 | Malformed JSON | 400 |
-| `GET /notifications/{id}` with a non-UUID id | 400, path `/params/id` |
+| `GET /v0/notifications/{id}` with a non-UUID id | 400, path `/params/id` |
 | Unknown notification id | 404 |
 | Unknown route | 404 |
 | Wrong method on a known route | 405, with an `Allow` header |
@@ -137,11 +138,12 @@ Logs are one JSON line per event (`notification.queued`, `notification.sent`, `n
 
 ## Testing approach
 
-`pnpm test` runs 34 Vitest tests in about a second.
+`pnpm test` runs 36 Vitest tests in about a second.
 
 - API tests ([`test/api.test.ts`](test/api.test.ts)) use supertest against the real `createApp` with the real validator, routes and error middleware. They cover the 202 response and `Location` header, each missing field, unsupported channel, empty and whitespace-only messages, extra properties, malformed JSON, 415, invalid and valid recipients per channel, GET 200/400/404 and `/health`. Every error test also asserts the problem+json shape. The test app runs with `validateResponses` on, so the responses are checked against the spec too. Testing at the HTTP level means the tests exercise the contract itself, since most validation lives in the spec.
 - Processing tests ([`test/processing.test.ts`](test/processing.test.ts)) check that a successful send ends in `sent`, a failed send ends in `failed`, the status reads `queued` while a send is in progress, and a failure doesn't block the next item in the queue.
 - Domain tests ([`test/domain.test.ts`](test/domain.test.ts)) cover allowed and illegal status transitions.
+- A contract test ([`test/contract.test.ts`](test/contract.test.ts)) fails if a path in `openapi.yaml` doesn't start with the major version from `info.version`, and checks that the unprefixed path returns 404. Bumping the version without moving the paths, or the reverse, breaks the build.
 
 No test depends on timing or randomness. Tests inject senders that always succeed, always fail, or wait on a promise the test releases (`gatedSender`). `dispatcher.drain()` resolves once the queue is empty and nothing is in flight, so a test awaits it instead of sleeping. The simulated sender's randomness is injectable for the same reason.
 
