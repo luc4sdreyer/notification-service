@@ -6,3 +6,9 @@ strictDepBuilds: true         # fail the install on any unreviewed dependency bu
 savePrefix: ''                # exact versions in package.json, no ^ ranges
 allowBuilds:                  # no install scripts run unless listed as true here
   esbuild: false              # postinstall only verifies the binary; the platform package ships via optionalDependencies
+
+overrides:
+  # rolldown 1.2.18 (via vitest -> vite 8.3.7) ships a native binding that dies with
+  # SIGILL on CPUs without newer instruction sets (seen on Ryzen 5600X, 2026-11-11).
+  # 1.2.16 works. Drop this once a fixed release is past minimumReleaseAge.
+  rolldown: 1.2.16
