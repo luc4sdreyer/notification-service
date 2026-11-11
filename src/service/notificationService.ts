@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { components } from '../generated/api.js';
 import { assertTransition, type Channel, type Notification, type Status } from '../domain/notification.js';
 import { NotFoundError } from '../domain/errors.js';
+import { validateRecipient } from '../domain/recipientValidation.js';
 import type { NotificationRepository } from '../ports/notificationRepository.js';
 import type { Dispatcher } from '../ports/dispatcher.js';
 import type { ChannelSender } from '../ports/channelSender.js';
@@ -17,6 +18,7 @@ export class NotificationService {
   ) {}
 
   async create(input: CreateNotificationInput): Promise<Notification> {
+    validateRecipient(input.channel, input.recipient);
     const now = new Date();
     const notification: Notification = {
       id: randomUUID(),

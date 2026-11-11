@@ -70,6 +70,32 @@ describe('POST /notifications', () => {
     expect(errorPaths(res)).toEqual(expect.arrayContaining(['/body/recipient', '/body/channel', '/body/message']));
   });
 
+  it.each([
+    ['email', 'not-an-email'],
+    ['email', 'user@localhost'],
+    ['sms', '0612345678'],
+    ['sms', '+0123456'],
+    ['push', 'token with spaces'],
+  ])('rejects an invalid %s recipient %j', async (channel, recipient) => {
+    const { app } = setup();
+    const res = await request(app).post('/notifications').send({ ...validBody, channel, recipient });
+
+    expectProblem(res, 400);
+    expect(res.body.detail).toBe('Request validation failed');
+    expect(errorPaths(res)).toEqual(['/body/recipient']);
+  });
+
+  it.each([
+    ['email', 'first.last+tag@example.co.uk'],
+    ['sms', '+14155550123'],
+    ['push', 'fcm:APA91bH-abc_123'],
+  ])('accepts a valid %s recipient %j', async (channel, recipient) => {
+    const { app } = setup();
+    const res = await request(app).post('/notifications').send({ ...validBody, channel, recipient });
+
+    expect(res.status).toBe(202);
+  });
+
   it('rejects malformed JSON with a problem response', async () => {
     const { app } = setup();
     const res = await request(app)
