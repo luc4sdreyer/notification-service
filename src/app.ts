@@ -1,4 +1,4 @@
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import express from 'express';
 import * as OpenApiValidator from 'express-openapi-validator';
 import type { NotificationService } from './service/notificationService.js';
@@ -7,7 +7,7 @@ import { errorHandler } from './http/errorHandler.js';
 import { utf8Json } from './http/requireUtf8.js';
 
 // Same relative location from src/ (tsx) and dist/ (compiled).
-export const specPath = fileURLToPath(new URL('../openapi.yaml', import.meta.url));
+export const specPath = join(import.meta.dirname, '../openapi.yaml');
 
 export interface AppDeps {
   service: NotificationService;

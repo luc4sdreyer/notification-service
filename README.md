@@ -141,11 +141,12 @@ Logs are one JSON line per event (`notification.queued`, `notification.sent`, `n
 
 ## Testing approach
 
-`pnpm test` runs 55 Vitest tests in about two seconds.
+`pnpm test` runs 58 Vitest tests in about two seconds.
 
 - API tests ([`test/api.test.ts`](test/api.test.ts)) use supertest against the real `createApp` with the real validator, routes and error middleware. They cover the 202 response and `Location` header, each missing field, unsupported channel, empty and whitespace-only messages, extra properties, malformed JSON, 415, invalid and valid recipients per channel, GET 200/400/404 and `/health`. Every error test also asserts the problem+json shape. The test app runs with `validateResponses` on, so the responses are checked against the spec too. Testing at the HTTP level means the tests exercise the contract itself, since most validation lives in the spec.
 - Processing tests ([`test/processing.test.ts`](test/processing.test.ts)) check that a successful send ends in `sent`, a failed send ends in `failed`, the status reads `queued` while a send is in progress, and a failure doesn't block the next item in the queue.
 - Domain tests ([`test/domain.test.ts`](test/domain.test.ts)) cover allowed and illegal status transitions.
+- Repository tests ([`test/repository.test.ts`](test/repository.test.ts)) check that stored records are deep copies, so changing a returned object (or one of its dates) can't change what's stored.
 - UTF-8 tests ([`test/utf8.test.ts`](test/utf8.test.ts)) check that non-ASCII text reaches the sender unchanged, that the length limit counts code points, and that Unicode whitespace counts as empty. They also send raw invalid bytes and unpaired surrogate escapes and expect a 400, rather than letting Node replace them with U+FFFD and deliver the result. These are two separate checks: Node turns invalid bytes into U+FFFD, a valid character, before parsing, so they must be caught as bytes. A `\ud83d` escape is plain ASCII on the wire, so it can only be caught in the parsed strings.
 - A contract test ([`test/contract.test.ts`](test/contract.test.ts)) fails if a path in `openapi.yaml` doesn't start with the major version from `info.version`, and checks that the unprefixed path returns 404. Bumping the version without moving the paths, or the reverse, breaks the build.
 

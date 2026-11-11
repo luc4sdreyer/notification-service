@@ -12,9 +12,8 @@ export const alwaysFails: ChannelSender = {
 
 /** A sender that does not complete until the test calls release(). */
 export function gatedSender(): { sender: ChannelSender; release: () => void } {
-  let release!: () => void;
-  const gate = new Promise<void>((resolve) => (release = resolve));
-  return { sender: { send: () => gate }, release };
+  const { promise, resolve } = Promise.withResolvers<void>();
+  return { sender: { send: () => promise }, release: resolve };
 }
 
 /** The real app and object graph, with one sender for every channel. */

@@ -37,7 +37,7 @@ From my review of the result:
 
 ## How the solution was validated
 
-- Automated tests: 55 Vitest + supertest tests (API, processing, domain, contract, UTF-8), with response validation against the spec turned on. `pnpm typecheck` passes under `strict`.
+- Automated tests: 58 Vitest + supertest tests (API, processing, domain, repository, contract, UTF-8), with response validation against the spec turned on. `pnpm typecheck` passes under `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` and `noImplicitOverride`.
 - Checking the tests themselves: for the versioning test and both UTF-8 body checks, the code was broken on purpose (version bumped without moving the paths, each check disabled in turn) to confirm the matching tests fail.
 - Manual runs: `curl` against the dev server and the compiled build, covering 202 + `Location`, `queued → sent`, validation errors, malformed JSON, 415, non-UUID and unknown ids, 405 and `/health`. A `SIGTERM` during a slow send confirmed that shutdown drains the queue before exiting.
 - Clean install: `rm -rf node_modules && pnpm install --frozen-lockfile`, then the tests again.

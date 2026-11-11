@@ -7,7 +7,8 @@ type Handler = (id: string) => Promise<void>;
 export class InMemoryDispatcher implements Dispatcher {
   private readonly queue: string[] = [];
   private inFlight = 0;
-  private idleWaiters: Array<() => void> = [];
+  /** Shared by every drain() caller while work is outstanding. */
+  private idle: PromiseWithResolvers<void> | undefined;
 
   constructor(
     private readonly handler: Handler,
@@ -25,7 +26,8 @@ export class InMemoryDispatcher implements Dispatcher {
 
   drain(): Promise<void> {
     if (this.isIdle()) return Promise.resolve();
-    return new Promise((resolve) => this.idleWaiters.push(resolve));
+    this.idle ??= Promise.withResolvers<void>();
+    return this.idle.promise;
   }
 
   private isIdle(): boolean {
@@ -38,10 +40,9 @@ export class InMemoryDispatcher implements Dispatcher {
       this.inFlight++;
       void this.run(id);
     }
-    if (this.isIdle()) {
-      const waiters = this.idleWaiters;
-      this.idleWaiters = [];
-      for (const resolve of waiters) resolve();
+    if (this.isIdle() && this.idle) {
+      this.idle.resolve();
+      this.idle = undefined;
     }
   }
 

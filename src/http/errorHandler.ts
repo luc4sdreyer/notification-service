@@ -45,7 +45,7 @@ function toProblem(err: unknown): { body: Problem; headers?: Record<string, stri
       return { body: problem(400, 'Request validation failed', errors) };
     }
     // Other validator errors (404 unknown route, 405, 415) carry a single readable message.
-    return { body: problem(err.status, errors[0]?.message ?? err.message), headers: err.headers };
+    return { body: problem(err.status, errors[0]?.message ?? err.message), ...(err.headers && { headers: err.headers }) };
   }
   return { body: problem(500, 'An unexpected error occurred') };
 }
