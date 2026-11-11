@@ -29,6 +29,16 @@ describe('InMemoryNotificationRepository', () => {
     expect(stored.createdAt.toISOString()).toBe('2026-01-01T00:00:00.000Z');
   });
 
+  it('gives each timestamp its own Date, even when they were saved as one', async () => {
+    const repo = new InMemoryNotificationRepository();
+    await repo.save(sample()); // sample() uses one Date for both, as the service does
+
+    const returned = (await repo.findById(sample().id))!;
+    returned.updatedAt.setUTCFullYear(2030);
+
+    expect(returned.createdAt.toISOString()).toBe('2026-01-01T00:00:00.000Z');
+  });
+
   it('is not affected by changes to the saved object after save', async () => {
     const repo = new InMemoryNotificationRepository();
     const original = sample();

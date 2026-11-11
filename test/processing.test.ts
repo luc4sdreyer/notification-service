@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 import type { ChannelSender } from '../src/ports/channelSender.js';
-import { alwaysFails, alwaysSucceeds, gatedSender, setup, validBody } from './helpers.js';
+import { alwaysFails, alwaysSucceeds, gatedSender, gatedSenders, setup, validBody } from './helpers.js';
 
 async function create(app: Parameters<typeof request>[0], body: object = validBody): Promise<string> {
   const res = await request(app).post('/v0/notifications').send(body);
@@ -46,32 +46,24 @@ describe('processing', () => {
   });
 
   it('resolves every drain() caller, and waits again once the queue refills', async () => {
-    // Each send waits for its own release, so the test decides when work finishes.
-    const releases: Array<() => void> = [];
-    const sender: ChannelSender = {
-      send: () => {
-        const { promise, resolve } = Promise.withResolvers<void>();
-        releases.push(resolve);
-        return promise;
-      },
-    };
+    const { sender, sendStarted } = gatedSenders();
     const { app, dispatcher } = setup(sender);
+    // True if p has not settled once the microtask queue is empty (event-loop order, not time).
     const isPending = (p: Promise<void>) =>
       Promise.race([p.then(() => false), new Promise<boolean>((r) => setImmediate(() => r(true)))]);
 
+    // A behaviour check: every waiter is released, however drain() is implemented.
     const first = await create(app);
     const waiters = [dispatcher.drain(), dispatcher.drain()];
-    await vi.waitFor(() => expect(releases).toHaveLength(1));
-    releases[0]!();
+    (await sendStarted(0))();
     await Promise.all(waiters);
     expect(await statusOf(app, first)).toBe('sent');
 
-    // A second cycle must get a fresh promise, not the one already resolved.
+    // The regression check: a second cycle must not reuse the already-resolved promise.
     const second = await create(app);
     const nextDrain = dispatcher.drain();
     expect(await isPending(nextDrain)).toBe(true);
-    await vi.waitFor(() => expect(releases).toHaveLength(2));
-    releases[1]!();
+    (await sendStarted(1))();
     await nextDrain;
     expect(await statusOf(app, second)).toBe('sent');
   });

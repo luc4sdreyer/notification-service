@@ -6,8 +6,7 @@ import { NotificationService } from './service/notificationService.js';
 
 export interface ContainerOptions {
   senders: Record<Channel, ChannelSender>;
-  /** Defaults to the dispatcher's own default when omitted or undefined. */
-  concurrency?: number | undefined;
+  concurrency?: number;
 }
 
 /**

@@ -114,7 +114,7 @@ stateDiagram-v2
 
 [`src/server.ts`](../src/server.ts) is the composition root. It reads the config, builds one `SimulatedSender` for all three channels, calls `createContainer` to wire the repository, dispatcher and service, and passes the service to `createApp`. The tests use the same `createContainer` with senders that always succeed, always fail, or wait for the test to release them.
 
-On `SIGTERM` or `SIGINT` the server stops accepting connections, waits for in-flight requests, then awaits `dispatcher.drain()` so queued sends finish before the process exits.
+On `SIGTERM` or `SIGINT` the server stops accepting connections, waits for in-flight requests, then awaits `dispatcher.drain()` so queued sends finish before the process exits. It gives up after 8 seconds, logs how many sends were abandoned and exits with code 1, so a hung provider can't keep the process alive until it is killed.
 
 ## Where real infrastructure would plug in
 

@@ -19,6 +19,11 @@ export class InMemoryDispatcher implements Dispatcher {
     }
   }
 
+  /** Queued plus in-flight ids; logged if shutdown gives up. */
+  get pending(): number {
+    return this.queue.length + this.inFlight;
+  }
+
   enqueue(id: string): void {
     this.queue.push(id);
     this.pump();

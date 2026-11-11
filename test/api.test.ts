@@ -143,6 +143,16 @@ describe('GET /v0/notifications/{id}', () => {
   });
 });
 
+describe('wrong method', () => {
+  it('returns 405 with an Allow header listing the supported methods', async () => {
+    const { app } = setup();
+    const res = await request(app).delete('/health');
+
+    expectProblem(res, 405);
+    expect(res.headers.allow).toBe('GET');
+  });
+});
+
 describe('GET /health', () => {
   it('returns ok', async () => {
     const { app } = setup();

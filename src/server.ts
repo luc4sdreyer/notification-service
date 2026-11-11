@@ -16,9 +16,19 @@ const server = createApp({ service }).listen(config.port, () => {
   log('server.listening', { port: config.port });
 });
 
+// Below Docker's and Kubernetes' default 10s grace period, so the exit is ours, not a SIGKILL.
+const SHUTDOWN_TIMEOUT_MS = 8_000;
+
 // Stop taking requests, let in-flight requests finish, then finish queued sends.
+// A hung send would otherwise keep the process alive until it is killed.
 async function shutdown(signal: string): Promise<void> {
   log('server.shutdown', { signal });
+  const timer = setTimeout(() => {
+    log('server.shutdown_timeout', { timeoutMs: SHUTDOWN_TIMEOUT_MS, abandoned: dispatcher.pending });
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+  timer.unref();
+
   await new Promise<void>((resolve) => server.close(() => resolve()));
   await dispatcher.drain();
   log('server.stopped');
