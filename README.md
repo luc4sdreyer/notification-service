@@ -82,6 +82,8 @@ Where the assignment is silent:
 
 ## Design decisions and trade-offs
 
+Diagrams of the components, the request and delivery flow, and the status lifecycle are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 ### Express 5 with express-openapi-validator
 
 It's a well-known framework, and the validator reads `openapi.yaml` directly, so the spec is enforced at runtime instead of mirrored in hand-written checks. Types come from the same file through `openapi-typescript`, and the domain's `Channel` and `Status` types are derived from them. If someone edits the spec without updating the code, the typecheck fails.
