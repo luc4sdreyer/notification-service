@@ -1,5 +1,7 @@
 # Notification Service: Design Brief
 
+Original design brief; the README and ARCHITECTURE.md describe the current service.
+
 Implementation brief for the take-home assignment. Read this fully before writing code.
 
 ## 1. Goal and constraints
