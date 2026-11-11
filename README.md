@@ -125,7 +125,7 @@ All errors look like this (`errors` is present only for validation failures):
 | Schema violation (missing field, bad channel, empty or whitespace message, extra property, oversized field) | 400, every violation listed |
 | Invalid recipient for the channel | 400, path `/body/recipient` |
 | Malformed JSON | 400 |
-| Body that isn't valid UTF-8 | 400 |
+| Body that isn't valid UTF-8: invalid bytes, or an unpaired surrogate escape such as `\ud83d` | 400 |
 | `GET /v0/notifications/{id}` with a non-UUID id | 400, path `/params/id` |
 | Unknown notification id | 404 |
 | Unknown route | 404 |
@@ -139,12 +139,12 @@ Logs are one JSON line per event (`notification.queued`, `notification.sent`, `n
 
 ## Testing approach
 
-`pnpm test` runs 45 Vitest tests in about two seconds.
+`pnpm test` runs 55 Vitest tests in about two seconds.
 
 - API tests ([`test/api.test.ts`](test/api.test.ts)) use supertest against the real `createApp` with the real validator, routes and error middleware. They cover the 202 response and `Location` header, each missing field, unsupported channel, empty and whitespace-only messages, extra properties, malformed JSON, 415, invalid and valid recipients per channel, GET 200/400/404 and `/health`. Every error test also asserts the problem+json shape. The test app runs with `validateResponses` on, so the responses are checked against the spec too. Testing at the HTTP level means the tests exercise the contract itself, since most validation lives in the spec.
 - Processing tests ([`test/processing.test.ts`](test/processing.test.ts)) check that a successful send ends in `sent`, a failed send ends in `failed`, the status reads `queued` while a send is in progress, and a failure doesn't block the next item in the queue.
 - Domain tests ([`test/domain.test.ts`](test/domain.test.ts)) cover allowed and illegal status transitions.
-- UTF-8 tests ([`test/utf8.test.ts`](test/utf8.test.ts)) check that non-ASCII text reaches the sender unchanged, that the length limit counts code points, and that Unicode whitespace counts as empty. They also send raw invalid bytes and expect a 400, rather than letting Node replace them with U+FFFD and deliver the result.
+- UTF-8 tests ([`test/utf8.test.ts`](test/utf8.test.ts)) check that non-ASCII text reaches the sender unchanged, that the length limit counts code points, and that Unicode whitespace counts as empty. They also send raw invalid bytes and unpaired surrogate escapes and expect a 400, rather than letting Node replace them with U+FFFD and deliver the result. These are two separate checks: Node turns invalid bytes into U+FFFD, a valid character, before parsing, so they must be caught as bytes. A `\ud83d` escape is plain ASCII on the wire, so it can only be caught in the parsed strings.
 - A contract test ([`test/contract.test.ts`](test/contract.test.ts)) fails if a path in `openapi.yaml` doesn't start with the major version from `info.version`, and checks that the unprefixed path returns 404. Bumping the version without moving the paths, or the reverse, breaks the build.
 
 No test depends on timing or randomness. Tests inject senders that always succeed, always fail, or wait on a promise the test releases (`gatedSender`). `dispatcher.drain()` resolves once the queue is empty and nothing is in flight, so a test awaits it instead of sleeping. The simulated sender's randomness is injectable for the same reason.

@@ -71,14 +71,54 @@ describe('UTF-8 input', () => {
     expect(res.body.detail).toBe('Request body is not valid UTF-8');
   });
 
-  it.each(['utf-16le', 'iso-8859-1'])('rejects charset=%s with 415', async (charset) => {
+  // Lone surrogates are valid ASCII on the wire but cannot be encoded as UTF-8;
+  // without the check they reach the sender as U+FFFD.
+  it.each([
+    ['an unpaired high surrogate in message', { message: 'hi \\ud83d' }],
+    ['an unpaired low surrogate in message', { message: '\\udc00 hi' }],
+    ['an unpaired surrogate in recipient', { recipient: 'user\\ud83d@example.com' }],
+  ])('rejects %s written as a JSON escape', async (_label, fields) => {
     const { app } = setup();
-    const json = JSON.stringify(validBody);
-    const body = Buffer.from(json, charset === 'utf-16le' ? 'utf16le' : 'latin1');
+    const merged = { ...validBody, ...fields };
+    const json = `{"recipient":"${merged.recipient}","channel":"${merged.channel}","message":"${merged.message}"}`;
+
+    const res = await postRaw(app, Buffer.from(json));
+
+    expect(res.status).toBe(400);
+    expect(res.body.detail).toBe('Request body is not valid UTF-8');
+  });
+
+  it('accepts a surrogate pair written as JSON escapes', async () => {
+    const { app } = setup();
+    const json = JSON.stringify(validBody).replace('Hello', 'Hello \\ud83c\\udf89');
+
+    const res = await postRaw(app, Buffer.from(json));
+
+    expect(res.status).toBe(202);
+  });
+
+  it.each([
+    ['utf-16le', 'utf16le'],
+    ['utf-16be', 'utf16le'],
+    ['utf-32', 'utf8'],
+    ['iso-8859-1', 'latin1'],
+    ['utf8', 'utf8'], // the label is 'utf-8'; body-parser refuses the alias too
+  ] as const)('rejects charset=%s with 415', async (charset, encoding) => {
+    const { app } = setup();
+    const body = Buffer.from(JSON.stringify(validBody), encoding);
 
     const res = await postRaw(app, body, `application/json; charset=${charset}`);
 
     expect(res.status).toBe(415);
     expect(res.headers['content-type']).toMatch(/^application\/problem\+json/);
+    expect(res.body.detail).toBe(`unsupported charset "${charset.toUpperCase()}"; JSON must be UTF-8`);
+  });
+
+  it.each(['utf-8', 'UTF-8', '"utf-8"'])('accepts charset=%s', async (charset) => {
+    const { app } = setup();
+
+    const res = await postRaw(app, Buffer.from(JSON.stringify(validBody)), `application/json; charset=${charset}`);
+
+    expect(res.status).toBe(202);
   });
 });
