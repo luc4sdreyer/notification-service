@@ -30,8 +30,9 @@ From the implementation stage:
 
 ## How the solution was validated
 
-- Automated tests: 36 Vitest + supertest tests (API, processing, domain, contract), with response validation against the spec turned on. `pnpm typecheck` passes under `strict`.
+- Automated tests: 45 Vitest + supertest tests (API, processing, domain, contract, UTF-8), with response validation against the spec turned on. `pnpm typecheck` passes under `strict`.
 - Manual runs: `curl` against the dev server and the compiled build, covering 202 + `Location`, `queued → sent`, validation errors, malformed JSON, 415, non-UUID and unknown ids, 405 and `/health`. A `SIGTERM` during a slow send confirmed that shutdown drains the queue before exiting.
+- UTF-8 probe: a throwaway script sent non-ASCII text, Unicode whitespace, other charsets and raw invalid bytes to the app. It showed that invalid bytes were accepted after being replaced with U+FFFD, which led to the `requireUtf8` hook and `test/utf8.test.ts`.
 - Clean install: `rm -rf node_modules && pnpm install --frozen-lockfile`, then the tests again.
 - `pnpm audit`: no known vulnerabilities (2026-11-11).
 - Docker image: built with `--no-cache` (Docker 29.9.3). The lockfile passed pnpm's supply-chain checks inside the build. The runtime image runs as `node` and holds only `dist`, production dependencies, `openapi.yaml` and `package.json`. `curl` against the container covered `/health`, 202 + `Location`, `queued` then `sent`, validation errors, an invalid SMS recipient, 415, 400 and 404 on GET. `docker stop` during a 3-second send let the send finish and exited 0.
