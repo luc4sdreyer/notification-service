@@ -43,3 +43,4 @@ From my review of the result:
 - Clean install: `rm -rf node_modules && pnpm install --frozen-lockfile`, then the tests again.
 - `pnpm audit`: no known vulnerabilities (2026-11-11).
 - Docker image: built with `--no-cache` (Docker 29.9.3). The lockfile passed pnpm's supply-chain checks inside the build. The runtime image runs as `node` and holds only `dist`, production dependencies, `openapi.yaml` and `package.json`. `curl` against the container covered `/health`, 202 + `Location`, `queued` then `sent`, validation errors, an invalid SMS recipient, 415, 400 and 404 on GET. `docker stop` during a 3-second send let the send finish and exited 0. The image was rebuilt after the versioning and UTF-8 changes, and the `/v0` paths, invalid bytes, a lone surrogate escape and a UTF-16 charset were checked again in the container.
+- Author review completed.
