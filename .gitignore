@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+*.log
+# The assignment brief is not part of the submission.
+docs/AOL_Notification_Service_Assignment.pdf

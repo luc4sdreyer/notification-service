@@ -1,0 +1,157 @@
+openapi: 3.0.3
+info:
+  title: Notification Service
+  version: 0.1.0
+  description: |
+    Accepts notifications for asynchronous delivery and reports their status.
+    All errors use RFC 9457 `application/problem+json`.
+paths:
+  /notifications:
+    post:
+      operationId: createNotification
+      summary: Queue a notification for delivery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNotificationRequest'
+      responses:
+        '202':
+          description: Accepted for delivery. Poll the `Location` URL for the status.
+          headers:
+            Location:
+              description: URL of the created notification.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateNotificationResponse'
+        '400':
+          $ref: '#/components/responses/Problem'
+        '415':
+          $ref: '#/components/responses/Problem'
+  /notifications/{id}:
+    get:
+      operationId: getNotification
+      summary: Get the current status of a notification
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The notification.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationStatusResponse'
+        '400':
+          $ref: '#/components/responses/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+  /health:
+    get:
+      operationId: getHealth
+      summary: Liveness check
+      responses:
+        '200':
+          description: The service is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+components:
+  schemas:
+    Channel:
+      type: string
+      enum: [email, sms, push]
+    Status:
+      type: string
+      enum: [queued, sent, failed]
+    CreateNotificationRequest:
+      type: object
+      additionalProperties: false
+      required: [recipient, channel, message]
+      properties:
+        recipient:
+          type: string
+          minLength: 1
+          maxLength: 320
+          description: |
+            Format depends on the channel and is checked by the service, not by this schema:
+            `email` an address like `name@example.com`; `sms` an E.164 number like `+14155550123`;
+            `push` a device token without whitespace.
+          example: user@example.com
+        channel:
+          $ref: '#/components/schemas/Channel'
+        message:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          pattern: '\S'
+          description: Must contain at least one non-whitespace character.
+          example: Your order has shipped.
+    CreateNotificationResponse:
+      type: object
+      additionalProperties: false
+      required: [id, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/Status'
+    NotificationStatusResponse:
+      type: object
+      additionalProperties: false
+      required: [id, channel, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        channel:
+          $ref: '#/components/schemas/Channel'
+        status:
+          $ref: '#/components/schemas/Status'
+    Problem:
+      type: object
+      description: RFC 9457 problem details.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        errors:
+          type: array
+          description: Present only for validation failures.
+          items:
+            type: object
+            required: [path, message]
+            properties:
+              path:
+                type: string
+              message:
+                type: string
+  responses:
+    Problem:
+      description: Error, as RFC 9457 problem details.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'

@@ -1,0 +1,8 @@
+# Supply-chain settings. See README "Why pnpm" and https://pnpm.io/settings.
+minimumReleaseAge: 1440       # minutes = 24h; no version younger than a day is installed
+blockExoticSubdeps: true      # transitive deps must come from the registry, not git or tarball URLs
+trustPolicy: no-downgrade     # refuse a version whose publish trust level is weaker than earlier versions
+strictDepBuilds: true         # fail the install on any unreviewed dependency build script
+savePrefix: ''                # exact versions in package.json, no ^ ranges
+allowBuilds:                  # no install scripts run unless listed as true here
+  esbuild: false              # postinstall only verifies the binary; the platform package ships via optionalDependencies
